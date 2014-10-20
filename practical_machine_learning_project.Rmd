@@ -1,0 +1,75 @@
+---
+title: "PracticalMachineLearningCourseProject"
+author: "Xi Jiang"
+date: "Wednesday, October 15, 2014"
+output: html_document
+---
+
+##Introduction
+
+The goal of this project is to predict the way in which subjects performed the barbell exercise (1 correct way labeled as 'A' in the 'classe' variable, alongside 4 different incorrect ways). In this report, I plan to implement a prediction with Random Forests, since the predictors may not necessarily have any linear relationship with the outcomes (and it takes a long time to do exploratory investigation over all potential predictors). 
+
+Given the small sample size of the testing set (20), the out-of-sample error can potentially be high due to sampling bias, which is why a 10-fold cross-validation with 5 repeats will be used to control said error.
+
+##Data loading and preprocessing
+
+```{r}
+#assuming the data is under the working directory
+data <- read.csv('pml-training.csv')
+data_test <- read.csv('pml-testing.csv')
+
+#load required libraries
+library(caret)
+
+#remove near zero variance predictors
+nsv <- nearZeroVar(data,saveMetrics=TRUE)
+data <- data[,!nsv$nzv]
+data_test <- data_test[,!nsv$nzv]
+
+#remove predictors that do not belong to outcome/predictor. This includes 'X', 'user_name', 'raw_timestamp_part_1','raw_timestamp_part_2', 'cvtd_timestamp', and 'num_window'
+data <- data[,7:100]
+data_test <- data_test[,7:100]
+
+#remove predictors that contain less than 10% non-NAs
+test <- rep(1,94)
+for (i in seq(1:94)){
+        if (length(which(!is.na(data[,i]))) <= round(19622*0.1)){
+                test[i] <- 0
+        }
+}
+test <- as.logical(test)
+data <- data[,test]
+data_test <- data_test[,test]
+
+#standardize the predictors (center and scale)
+preObj <- preProcess(data[,-53],method=c("center","scale"))
+training <- predict(preObj,data[,-53])
+testing <- predict(preObj,data_test[,-53])
+
+#re-attach outcome
+training <- data.frame(training,data$classe)
+colnames(training)[53] <- 'classe'
+colnames(training)
+```
+
+The variables listed above will be the predictors used to build the Random Forest models.
+
+##Building prediction model with Random Forest
+
+Here we set the parameters that specify how cross-validation will be done, and fit Random FOrest models to the training data. Given the significant memory usage (~4GB) of the algorithm, the following two code chunks are set as 'eval=FALSE' for proper HTML-knitting. 
+
+```{r, eval=FALSE}
+set.seed(42)
+# repeat 5 times 10-fold cross validation
+ctrl <- trainControl(method='repeatedcv',number=10,repeats=5)
+modFit <- train(classe~.,data=training,method='rf',prox=TRUE,trControl=ctrl)
+save(modFit,file='modFit.RData')
+```
+
+##Using the model to generate predictions for the testing set
+
+After running the Random Forest algorithm on a workplace computer with 128G RAM for >24h, the final model is finally made. We can now make predictions as follows:
+
+```{r, eval=FALSE}
+pred <- predict(modFit,testing)
+```
