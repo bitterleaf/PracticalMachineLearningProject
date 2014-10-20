@@ -1,4 +1,4 @@
 PracticalMachineLearningProject
 ===============================
 
-To view the HTML file, go to the following link:
+To view the HTML file, please go to [this link](http://bitterleaf.github.io/PracticalMachineLearningProject).
